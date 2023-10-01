@@ -13,17 +13,32 @@ pub enum Expr {
     /// \x:t.e
     Abs { x: Box<Expr>, t: Type, e: Box<Expr> },
     /// if e1 then e2 else e3
-    Let {
+    If {
         e1: Box<Expr>,
         e2: Box<Expr>,
         e3: Box<Expr>,
     },
 }
 
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, PartialEq, Eq, Clone)]
 pub enum Type {
     Bool,
     Fn(Box<Type>, Box<Type>),
+}
+
+impl ToString for Type {
+    fn to_string(&self) -> String {
+        match self {
+            Type::Bool => "Bool".to_string(),
+            Type::Fn(a, b) => {
+                if let Type::Fn(_, _) = **a {
+                    format!("({}) -> {}", a.to_string(), b.to_string())
+                } else {
+                    format!("{} -> {}", a.to_string(), b.to_string())
+                }
+            }
+        }
+    }
 }
 
 #[derive(Debug, PartialEq, Clone)]
@@ -94,7 +109,7 @@ impl Parser {
         let e2 = self.expr()?;
         self.consume(&Token::Else)?;
         let e3 = self.expr()?;
-        Ok(Expr::Let {
+        Ok(Expr::If {
             e1: Box::new(e1),
             e2: Box::new(e2),
             e3: Box::new(e3),
