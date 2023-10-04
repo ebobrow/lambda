@@ -3,6 +3,7 @@ use scanner::Scanner;
 
 use crate::typer::Typer;
 
+mod interpreter;
 mod parser;
 mod scanner;
 mod typer;
@@ -30,6 +31,7 @@ fn type_line(line: String) -> anyhow::Result<()> {
     let tokens = Scanner::scan(line)?;
     let expr = Parser::parse(tokens)?;
     let ty = Typer::default().typecheck(&expr)?;
-    println!("{}", ty.to_string());
+    let out = interpreter::interpret(&expr, false);
+    println!("{} : {}", out.to_string(), ty.to_string());
     Ok(())
 }

@@ -47,15 +47,11 @@ impl Typer {
         }
     }
 
-    fn abs(&mut self, x: &Expr, t: &Type, e: &Expr) -> anyhow::Result<Type> {
-        if let Expr::Var(x) = x {
-            self.context.insert(x.to_string(), t.clone());
-            let t2 = self.typecheck(e)?;
-            self.context.remove(x);
-            Ok(Type::Fn(Box::new(t.clone()), Box::new(t2.clone())))
-        } else {
-            unreachable!()
-        }
+    fn abs(&mut self, x: &String, t: &Type, e: &Expr) -> anyhow::Result<Type> {
+        self.context.insert(x.to_string(), t.clone());
+        let t2 = self.typecheck(e)?;
+        self.context.remove(x);
+        Ok(Type::Fn(Box::new(t.clone()), Box::new(t2.clone())))
     }
 
     fn r#if(&mut self, e1: &Expr, e2: &Expr, e3: &Expr) -> anyhow::Result<Type> {
@@ -75,7 +71,16 @@ impl Typer {
 
 #[cfg(test)]
 mod tests {
+    use super::*;
 
     #[test]
-    fn works() {}
+    fn works() {
+        let e = Expr::Abs {
+            x: "x".into(),
+            t: Type::Bool,
+            e: Box::new(Expr::Var("x".into())),
+        };
+        let ty = Typer::default().typecheck(&e).unwrap();
+        assert_eq!(ty, Type::Fn(Box::new(Type::Bool), Box::new(Type::Bool)));
+    }
 }

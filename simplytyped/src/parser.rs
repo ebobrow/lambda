@@ -11,13 +11,19 @@ pub enum Expr {
     /// e1 e2
     App { e1: Box<Expr>, e2: Box<Expr> },
     /// \x:t.e
-    Abs { x: Box<Expr>, t: Type, e: Box<Expr> },
+    Abs { x: String, t: Type, e: Box<Expr> },
     /// if e1 then e2 else e3
     If {
         e1: Box<Expr>,
         e2: Box<Expr>,
         e3: Box<Expr>,
     },
+}
+
+#[derive(Debug, PartialEq, Clone)]
+pub enum Constant {
+    True,
+    False,
 }
 
 #[derive(Debug, PartialEq, Eq, Clone)]
@@ -41,10 +47,40 @@ impl ToString for Type {
     }
 }
 
-#[derive(Debug, PartialEq, Clone)]
-pub enum Constant {
-    True,
-    False,
+impl ToString for Expr {
+    fn to_string(&self) -> String {
+        let maybe_parenthesize = |e: &Expr| {
+            if matches!(*e, Expr::Var(_) | Expr::Constant(_)) {
+                e.to_string()
+            } else {
+                format!("({})", e.to_string())
+            }
+        };
+
+        match self {
+            Expr::Var(x) => x.to_string(),
+            Expr::Constant(c) => c.to_string(),
+            Expr::App { e1, e2 } => {
+                format!("{} {}", maybe_parenthesize(e1), maybe_parenthesize(e2))
+            }
+            Expr::Abs { x, t, e } => format!("\\{}: {}.{}", x, t.to_string(), e.to_string()),
+            Expr::If { e1, e2, e3 } => format!(
+                "if {} then {} else {}",
+                e1.to_string(),
+                e2.to_string(),
+                e3.to_string()
+            ),
+        }
+    }
+}
+
+impl ToString for Constant {
+    fn to_string(&self) -> String {
+        match self {
+            Constant::True => "true".to_string(),
+            Constant::False => "false".to_string(),
+        }
+    }
 }
 
 pub struct Parser {
@@ -78,7 +114,11 @@ impl Parser {
                 self.consume(&Token::LeftParen)?;
                 let e = self.expr()?;
                 self.consume(&Token::RightParen)?;
-                self.maybe_app(e)
+                if recurse_app {
+                    self.maybe_app(e)
+                } else {
+                    Ok(e)
+                }
             }
             Token::True => {
                 self.consume(&Token::True)?;
@@ -122,14 +162,14 @@ impl Parser {
     }
 
     fn maybe_app(&mut self, e1: Expr) -> anyhow::Result<Expr> {
-        let mut ee = Vec::new();
-        while let Ok(e) = self.do_expr(false) {
-            ee.push(e);
+        if let Ok(e2) = self.do_expr(false) {
+            self.maybe_app(Expr::App {
+                e1: Box::new(e1),
+                e2: Box::new(e2),
+            })
+        } else {
+            Ok(e1)
         }
-        Ok(ee.iter().fold(e1, |a, b| Expr::App {
-            e1: Box::new(a),
-            e2: Box::new(b.clone()),
-        }))
     }
 
     fn abstraction(&mut self) -> anyhow::Result<Expr> {
@@ -139,11 +179,15 @@ impl Parser {
         let t = self.ty()?;
         self.consume(&Token::Dot)?;
         let e = self.expr()?;
-        Ok(Expr::Abs {
-            x: Box::new(x),
-            t,
-            e: Box::new(e),
-        })
+        if let Expr::Var(x) = x {
+            Ok(Expr::Abs {
+                x,
+                t,
+                e: Box::new(e),
+            })
+        } else {
+            unreachable!()
+        }
     }
 
     fn ty(&mut self) -> anyhow::Result<Type> {
@@ -222,7 +266,7 @@ mod tests {
             e,
             Expr::App {
                 e1: Box::new(Expr::Abs {
-                    x: Box::new(Expr::Var("x".into())),
+                    x: "x".into(),
                     t: Type::Bool,
                     e: Box::new(Expr::Var("x".into()))
                 }),
