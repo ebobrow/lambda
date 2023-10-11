@@ -1,0 +1,3 @@
+[submodule "polymorphic"]
+	path = polymorphic
+	url = https://github.com/ebobrow/hindley-milner
