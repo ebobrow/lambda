@@ -29,7 +29,7 @@ fn type_line(line: String) -> anyhow::Result<()> {
     let tokens = Scanner::scan(line)?;
     let expr = Parser::parse(tokens)?;
     // let ty = Typer::default().typecheck(&expr)?;
-    let out = interpreter::interpret(&expr, false);
+    let out = interpreter::interpret(&expr);
     println!("{}", out.to_string());
     // println!("{} : {}", out.to_string(), ty.to_string());
     Ok(())

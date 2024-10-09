@@ -2,20 +2,48 @@ use std::collections::HashSet;
 
 use crate::parser::{Computation, Constant, Value};
 
-pub fn interpret(comp: &Computation, by_value: bool) -> Value {
+pub fn interpret(comp: &Computation) -> Value {
     match comp {
         Computation::Return(_) => todo!(),
         Computation::OpCall { op, param } => todo!(),
-        Computation::Seq { x, c1, c2 } => todo!(),
-        Computation::If { v, c1, c2 } => todo!(),
-        Computation::App { v1, v2 } => todo!(),
+        Computation::Seq { x, c1, c2 } => seq(x, c1, c2),
+        Computation::If { v, c1, c2 } => r#if(v, c1, c2),
+        Computation::App { v1, v2 } => app(v1, v2),
         Computation::Handling { with, handle } => todo!(),
     }
 }
 
-fn substitute(comp: &Computation, old: &String, new: &Value) -> Computation {
+fn app(v1: &Value, v2: &Value) -> Value {
+    if let Value::Fun { x, c } = v1 {
+        interpret(&substitute_comp(c, x, v2))
+    } else {
+        unreachable!()
+    }
+}
+
+fn seq(x: &String, c1: &Computation, c2: &Computation) -> Value {
+    match c1 {
+        Computation::Return(v) => interpret(&substitute_comp(c2, x, v)),
+        Computation::OpCall { op, param } => {
+            // op(x;y.c) === do y <- op v in c
+            // Maybe leave it in here??
+            todo!()
+        }
+        _ => unreachable!("uh"),
+    }
+}
+
+fn r#if(v: &Value, c1: &Computation, c2: &Computation) -> Value {
+    match v {
+        Value::Constant(Constant::True) => interpret(&c1),
+        Value::Constant(Constant::False) => interpret(&c2),
+        _ => unreachable!("uh... :|"),
+    }
+}
+
+fn substitute_comp(comp: &Computation, old: &String, new: &Value) -> Computation {
     match comp {
-        Computation::Return(_) => todo!(),
+        Computation::Return(v) => Computation::Return(substitute_val(v, old, new)),
         Computation::OpCall { op, param } => todo!(),
         Computation::Seq { x, c1, c2 } => todo!(),
         Computation::If { v, c1, c2 } => todo!(),
@@ -59,33 +87,42 @@ fn substitute(comp: &Computation, old: &String, new: &Value) -> Computation {
     }
 }
 
-fn fv(e: &Expr) -> HashSet<&String> {
-    match e {
-        Expr::Var(x) => HashSet::from([x]),
-        Expr::Constant(_) => HashSet::new(),
-        Expr::App { e1, e2 } => {
-            let fv1 = fv(e1);
-            let fv2 = fv(e2);
-            fv1.union(&fv2).cloned().collect()
-        }
-        Expr::Abs { x, t: _, e } => {
-            let mut set = fv(e);
-            set.remove(x);
-            set
-        }
-        Expr::If { e1, e2, e3 } => {
-            let fv1 = fv(e1);
-            let fv2 = fv(e2);
-            let fv3 = fv(e3);
-            fv1.union(&fv2)
-                .cloned()
-                .collect::<HashSet<_>>()
-                .union(&fv3)
-                .cloned()
-                .collect()
-        }
+fn substitute_val(v: &Value, old: &String, new: &Value) -> Value {
+    match v {
+        Value::Var(_) => todo!(),
+        Value::Constant(_) => todo!(),
+        Value::Fun { x, c } => todo!(),
+        Value::Handler(_) => todo!(),
     }
 }
+
+// fn fv(e: &Expr) -> HashSet<&String> {
+//     match e {
+//         Expr::Var(x) => HashSet::from([x]),
+//         Expr::Constant(_) => HashSet::new(),
+//         Expr::App { e1, e2 } => {
+//             let fv1 = fv(e1);
+//             let fv2 = fv(e2);
+//             fv1.union(&fv2).cloned().collect()
+//         }
+//         Expr::Abs { x, t: _, e } => {
+//             let mut set = fv(e);
+//             set.remove(x);
+//             set
+//         }
+//         Expr::If { e1, e2, e3 } => {
+//             let fv1 = fv(e1);
+//             let fv2 = fv(e2);
+//             let fv3 = fv(e3);
+//             fv1.union(&fv2)
+//                 .cloned()
+//                 .collect::<HashSet<_>>()
+//                 .union(&fv3)
+//                 .cloned()
+//                 .collect()
+//         }
+//     }
+// }
 
 // #[cfg(test)]
 // mod tests {
